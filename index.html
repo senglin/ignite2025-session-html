@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Microsoft Ignite 2025 Session Viewer</title>
+    <!-- Handlebars for templating -->
+    <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+            margin: 0;
+        }
+
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto 40px auto;
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #2d3748;
+        }
+
+        .page-subtitle {
+            font-size: 14px;
+            color: #4a5568;
+            margin-bottom: 20px;
+        }
+
+        .instructions {
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            font-size: 14px;
+            color: #2d3748;
+        }
+
+        .instructions ol {
+            padding-left: 20px;
+            margin-top: 10px;
+            margin-bottom: 0;
+        }
+
+        .instructions code {
+            background: #edf2f7;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .upload-area {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 25px;
+            align-items: stretch;
+        }
+
+        .drop-zone {
+            flex: 2;
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            background: #ffffff;
+            padding: 24px;
+            text-align: center;
+            color: #4a5568;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .drop-zone.dragover {
+            border-color: #667eea;
+            background: #f0f4ff;
+            color: #2c5282;
+        }
+
+        .drop-zone-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .drop-zone-subtitle {
+            font-size: 13px;
+            color: #718096;
+        }
+
+        .file-picker {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 16px 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            font-size: 14px;
+        }
+
+        .file-picker label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2d3748;
+        }
+
+        .file-picker input[type="file"] {
+            font-size: 13px;
+        }
+
+        .status {
+            font-size: 13px;
+            color: #4a5568;
+            margin-bottom: 16px;
+        }
+
+        .status .status-label {
+            font-weight: 600;
+        }
+
+        .status-error {
+            color: #c53030;
+        }
+
+        .status-success {
+            color: #2f855a;
+        }
+
+        /* Visualization styles (from your original template) */
+        .tabs {
+            display: flex;
+            background: white;
+            border-radius: 8px 8px 0 0;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 0;
+        }
+        .tab-button {
+            flex: 1;
+            padding: 15px 20px;
+            background: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+        .tab-button:hover {
+            background: #f9f9f9;
+            color: #667eea;
+        }
+        .tab-button.active {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            background: #f9f9ff;
+        }
+        .tab-content {
+            display: none;
+            background: white;
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px 30px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+        .header h1 {
+            margin: 0 0 8px 0;
+            font-size: 26px;
+        }
+        .header p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 15px;
+        }
+        .session-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .session-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+        .session-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+        .session-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2d3748;
+            margin: 0 0 8px 0;
+            flex: 1;
+        }
+        .session-code {
+            background: #667eea;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-left: 15px;
+            white-space: nowrap;
+        }
+        .session-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .meta-item {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            color: #4a5568;
+        }
+        .meta-icon {
+            margin-right: 6px;
+            font-weight: bold;
+        }
+        .description {
+            color: #4a5568;
+            line-height: 1.6;
+            margin-bottom: 15px;
+            font-size: 15px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .ai-description {
+            background: #f7fafc;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            color: #2d3748;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        .ai-description-label {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .speakers {
+            margin-bottom: 15px;
+        }
+        .speakers-label {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .speaker-list {
+            color: #4a5568;
+            font-size: 14px;
+        }
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        .tag {
+            background: #edf2f7;
+            color: #4a5568;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 10px 18px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+        .btn-secondary {
+            background: #48bb78;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #38a169;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(72, 187, 120, 0.3);
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #718096;
+            font-weight: 500;
+        }
+        .no-sessions {
+            text-align: center;
+            padding: 60px 20px;
+            color: #718096;
+            font-size: 16px;
+        }
+
+        #visualization {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <div class="page-title">Microsoft Ignite Session Viewer</div>
+    <div class="page-subtitle">
+        Load a JSON file downloaded from the Ignite sessions API and browse sessions with on-demand videos and slide decks.
+    </div>
+
+    <div class="instructions">
+        <strong>How to get the JSON file:</strong>
+        <ol>
+            <li>
+                Open this URL in your browser:
+                <br />
+                <code>https://api-v2.ignite.microsoft.com/api/session/all/en-US</code>
+            </li>
+            <li>Wait for the JSON response to load.</li>
+            <li>
+                Save the response as a file, e.g.:
+                <ul>
+                    <li>Browser: Right-click → <em>Save As…</em> → <code>ignite-sessions.json</code></li>
+                    <li>CLI (optional): <code>curl -o ignite-sessions.json "https://api-v2.ignite.microsoft.com/api/session/all/en-US"</code></li>
+                </ul>
+            </li>
+            <li>Return to this page and load that <code>.json</code> file using drag-and-drop or the file picker below.</li>
+        </ol>
+    </div>
+
+    <div class="upload-area">
+        <div id="dropZone" class="drop-zone">
+            <div class="drop-zone-title">Drag & Drop JSON Here</div>
+            <div class="drop-zone-subtitle">Drop your <code>ignite-sessions.json</code> file anywhere in this box</div>
+        </div>
+        <div class="file-picker">
+            <label for="fileInput">Or choose a file:</label>
+            <input type="file" id="fileInput" accept="application/json,.json" />
+        </div>
+    </div>
+
+    <div id="status" class="status">
+        <span class="status-label">Status:</span> Waiting for JSON file…
+    </div>
+
+    <div id="visualization">
+        <!-- Handlebars-rendered visualization will appear here -->
+    </div>
+</div>
+
+<!-- Handlebars template for the visualization -->
+    <script id="session-template" type="text/x-handlebars-template">
+    <div class="header">
+        <h1>🎯 Microsoft Ignite 2025 Sessions</h1>
+        <p>Total Sessions Loaded: {{totalSessions}}</p>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-button active" onclick="switchTab(event, 'ondemand')">
+            Sessions with On-Demand Videos ({{onDemandCount}})
+        </button>
+        <button class="tab-button" onclick="switchTab(event, 'slides')">
+            Sessions with Slide Decks ({{slideDeckCount}})
+        </button>
+    </div>
+
+    <div id="ondemand" class="tab-content active">
+        <h2>Sessions with On-Demand Videos (Total: {{onDemandCount}})</h2>
+        {{#if onDemandSessions.length}}
+            {{#each onDemandSessions}}
+            <div class="session-card">
+                <div class="session-header">
+                    <h2 class="session-title">#{{index}} {{title}}</h2>
+                    <span class="session-code">{{sessionCode}}</span>
+                </div>
+                <div class="session-meta">
+                    <div class="meta-item"><span class="meta-icon">📅</span><span>Date & Time: {{dateTime}}</span></div>
+                    <div class="meta-item"><span class="meta-icon">⏱️</span><span>Duration: {{durationInMinutes}} min</span></div>
+                </div>
+                {{#if description}}
+                <div class="description">{{description}}</div>
+                {{/if}}
+                {{#if aiDescription}}
+                <div class="ai-description">
+                    <div class="ai-description-label">AI Description</div>
+                    <div>{{{aiDescription}}}</div>
+                </div>
+                {{/if}}
+                {{#if speakerNames}}
+                <div class="speakers">
+                    <div class="speakers-label">Speakers:</div>
+                    <div class="speaker-list">{{speakerNames}}</div>
+                </div>
+                {{/if}}
+                {{#if onDemand}}
+                <div class="actions">
+                    <a href="{{onDemand}}" target="_blank" class="btn btn-primary">▶️ On-Demand Video</a>
+                    {{#if downloadVideoLink}}
+                    <a href="{{downloadVideoLink}}" target="_blank" class="btn btn-secondary">⬇️ Download</a>
+                    {{/if}}
+                </div>
+                <div class="meta-item" style="margin-top:10px;font-size:13px;word-break:break-all;">URL: <a href="{{onDemand}}" target="_blank">{{onDemand}}</a></div>
+                {{/if}}
+            </div>
+            {{/each}}
+        {{else}}
+            <div class="no-sessions">No sessions with on-demand videos found.</div>
+        {{/if}}
+    </div>
+
+    <div id="slides" class="tab-content">
+        <h2>Sessions with Slide Decks (Total: {{slideDeckCount}})</h2>
+        {{#if slideDeckSessions.length}}
+            {{#each slideDeckSessions}}
+            <div class="session-card">
+                <div class="session-header">
+                    <h2 class="session-title">#{{index}} {{title}}</h2>
+                    <span class="session-code">{{sessionCode}}</span>
+                </div>
+                <div class="session-meta">
+                    <div class="meta-item"><span class="meta-icon">📅</span><span>Day & Time: {{dateTime}}</span></div>
+                    <div class="meta-item"><span class="meta-icon">⏱️</span><span>Duration: {{durationInMinutes}} min</span></div>
+                </div>
+                {{#if description}}
+                <div class="description">{{description}}</div>
+                {{/if}}
+                {{#if aiDescription}}
+                <div class="ai-description">
+                    <div class="ai-description-label">AI Description</div>
+                    <div>{{{aiDescription}}}</div>
+                </div>
+                {{/if}}
+                {{#if speakerNames}}
+                <div class="speakers">
+                    <div class="speakers-label">Speakers:</div>
+                    <div class="speaker-list">{{speakerNames}}</div>
+                </div>
+                {{/if}}
+                {{#if slideDeck}}
+                <div class="actions">
+                    <a href="{{slideDeck}}" target="_blank" class="btn btn-primary">📊 Slide Deck</a>
+                </div>
+                <div class="meta-item" style="margin-top:10px;font-size:13px;word-break:break-all;">URL: <a href="{{slideDeck}}" target="_blank">{{slideDeck}}</a></div>
+                {{/if}}
+            </div>
+            {{/each}}
+        {{else}}
+            <div class="no-sessions">No sessions with slide decks found.</div>
+        {{/if}}
+    </div>
+    </script>
+
+<script>
+    // Tab switching logic (used by template)
+    function switchTab(evt, tabName) {
+        var i, tabcontent, tabbuttons;
+
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].classList.remove("active");
+        }
+
+        tabbuttons = document.getElementsByClassName("tab-button");
+        for (i = 0; i < tabbuttons.length; i++) {
+            tabbuttons[i].classList.remove("active");
+        }
+
+        var target = document.getElementById(tabName);
+        if (target) {
+            target.classList.add("active");
+        }
+        if (evt && evt.currentTarget) {
+            evt.currentTarget.classList.add("active");
+        }
+    }
+
+    // Helper: validate URL (same logic as Postman script)
+    function isValidUrl(url) {
+        if (!url || typeof url !== 'string') return false;
+        url = url.trim();
+        if (url === '' || url === 'N/A') return false;
+        try {
+            var u = new URL(url);
+            return u.protocol === 'http:' || u.protocol === 'https:';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // Transform the raw JSON into the payload expected by the template
+    function formatDateTime(value) {
+        if (!value) return 'TBD';
+        // Handle possible ISO or other formats
+        try {
+            const d = new Date(value);
+            if (isNaN(d.getTime())) return value;
+            return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+        } catch (e) {
+            return value;
+        }
+    }
+
+    function constructVisualizerPayload(response) {
+        var onDemandSessions = [];
+        var slideDeckSessions = [];
+
+        response.forEach(function(session) {
+            var hasOnDemand = isValidUrl(session.onDemand);
+            var hasSlideDeck = isValidUrl(session.slideDeck);
+
+            var dateTime = formatDateTime(session.startdatetime);
+
+            if (hasOnDemand) {
+                onDemandSessions.push({
+                    index: onDemandSessions.length + 1,
+                    title: session.title || 'Untitled Session',
+                    sessionCode: session.sessionCode || 'N/A',
+                    description: session.description || '',
+                    aiDescription: session.aiDescription || '',
+                    speakerNames: session.speakerNames || '',
+                    dateTime: dateTime,
+                    durationInMinutes: session.durationInMinutes || 0,
+                    onDemand: session.onDemand,
+                    downloadVideoLink: isValidUrl(session.downloadVideoLink) ? session.downloadVideoLink : ''
+                });
+            }
+
+            if (hasSlideDeck) {
+                slideDeckSessions.push({
+                    index: slideDeckSessions.length + 1,
+                    title: session.title || 'Untitled Session',
+                    sessionCode: session.sessionCode || 'N/A',
+                    description: session.description || '',
+                    aiDescription: session.aiDescription || '',
+                    speakerNames: session.speakerNames || '',
+                    dateTime: dateTime,
+                    durationInMinutes: session.durationInMinutes || 0,
+                    slideDeck: session.slideDeck
+                });
+            }
+        });
+
+        return {
+            totalSessions: response.length,
+            onDemandCount: onDemandSessions.length,
+            slideDeckCount: slideDeckSessions.length,
+            onDemandSessions: onDemandSessions,
+            slideDeckSessions: slideDeckSessions
+        };
+    }
+
+    function setStatus(message, type) {
+        var statusEl = document.getElementById('status');
+        if (!statusEl) return;
+
+        statusEl.textContent = '';
+        var labelSpan = document.createElement('span');
+        labelSpan.className = 'status-label';
+        labelSpan.textContent = 'Status: ';
+        statusEl.appendChild(labelSpan);
+
+        var msgSpan = document.createElement('span');
+        msgSpan.textContent = ' ' + message;
+
+        statusEl.classList.remove('status-error', 'status-success');
+        if (type === 'error') {
+            statusEl.classList.add('status-error');
+        } else if (type === 'success') {
+            statusEl.classList.add('status-success');
+        }
+
+        statusEl.appendChild(msgSpan);
+    }
+
+    function handleFile(file) {
+        if (!file) {
+            return;
+        }
+
+        setStatus('Loading "' + file.name + '"…', null);
+
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                var text = e.target.result;
+                var json = JSON.parse(text);
+
+                if (!Array.isArray(json)) {
+                    throw new Error('Expected JSON to be an array of sessions.');
+                }
+
+                var payload = constructVisualizerPayload(json);
+                var templateSource = document.getElementById('session-template').innerHTML;
+                var template = Handlebars.compile(templateSource);
+                var html = template(payload);
+
+                var vizEl = document.getElementById('visualization');
+                vizEl.innerHTML = html;
+
+                setStatus('Loaded ' + payload.totalSessions + ' sessions from "' + file.name + '".', 'success');
+
+                // Scroll to the visualization
+                vizEl.scrollIntoView({ behavior: 'smooth' });
+
+            } catch (err) {
+                console.error(err);
+                setStatus('Failed to parse file: ' + err.message, 'error');
+            }
+        };
+        reader.onerror = function() {
+            setStatus('Error reading file.', 'error');
+        };
+
+        reader.readAsText(file);
+    }
+
+    // Setup drag-and-drop and file input
+    document.addEventListener('DOMContentLoaded', function() {
+        var dropZone = document.getElementById('dropZone');
+        var fileInput = document.getElementById('fileInput');
+
+        // Drag & drop events
+        ['dragenter', 'dragover'].forEach(function(eventName) {
+            dropZone.addEventListener(eventName, function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.add('dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(function(eventName) {
+            dropZone.addEventListener(eventName, function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.remove('dragover');
+            });
+        });
+
+        dropZone.addEventListener('drop', function(e) {
+            var files = e.dataTransfer.files;
+            if (files && files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        // Clicking the drop zone opens file picker
+        dropZone.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        // File input change
+        fileInput.addEventListener('change', function(e) {
+            var file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        });
+    });
+</script>
+</body>
+</html>

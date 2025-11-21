@@ -1,0 +1,42 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/alpine
+{
+	"name": "ignite2025-session-html",
+	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+	"image": "mcr.microsoft.com/devcontainers/base:alpine-3.20",
+
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	// "features": {},
+
+	// Configure SSH key sharing from host
+	// https://containers.dev/implementors-guide/ssh/
+	// Test it out with: ssh -T git@github.com (if you have set up SSH keys for GitHub)
+	"mounts": [
+		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
+	],
+	"remoteEnv": {
+		"SSH_AUTH_SOCK": "/ssh-agent.sock"
+	},
+
+	// 👇 Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+
+	// 👇 Configure tool-specific properties.
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-azuretools.vscode-docker",
+				"randomfractalsinc.vscode-data-preview",
+				"zainchen.json",
+				"mhutchie.git-graph"
+			],
+			"settings": {
+				"debug.console.wordWrap": false,
+				"terminal.integrated.fontFamily": "'Cascadia Code', '霞鹜文楷等宽', Consolas, 'Courier New', monospace"
+			}
+		}
+	}
+
+	// 👇 Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "root"
+}
