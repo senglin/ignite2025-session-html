@@ -1,0 +1,19 @@
+# Build output
+build/
+
+# Session data (large file)
+sessions.json
+
+# Logs
+*.log
+/tmp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+*.swo
+*~

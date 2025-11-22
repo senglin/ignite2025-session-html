@@ -22,8 +22,42 @@ This single-page HTML application provides an intuitive interface to view and fi
 
 - A modern web browser (Chrome, Firefox, Safari, or Edge)
 - Internet connection (for loading Handlebars library from CDN)
+- **For nginx deployment:** nginx installed (`sudo apk add nginx` on Alpine)
 
-### Usage
+### Quick Start
+
+**Recommended: Build with embedded data**
+```bash
+# Download the latest session data
+curl -o sessions.json "https://api-v2.ignite.microsoft.com/api/session/all/en-US"
+
+# Build and deploy (embeds data into HTML + starts nginx)
+./scripts/deploy.sh
+
+# The viewer will be available at http://localhost:8080
+# Sessions load automatically from embedded data!
+```
+
+**Alternative: Start without building**
+```bash
+# Option 1: nginx server (production-ready)
+./scripts/start.sh
+
+# Option 2: Simple HTTP server
+./scripts/serve.sh
+
+# Both serve on http://localhost:8080
+# You can drag/drop a sessions.json file to load data
+```
+
+**nginx management commands:**
+```bash
+./scripts/stop.sh      # Stop the server
+./scripts/restart.sh   # Restart/reload the server
+./scripts/status.sh    # Check server status and logs
+```
+
+### Manual Usage (without scripts)
 
 1. **Get the sessions data:**
    - Open [https://api-v2.ignite.microsoft.com/api/session/all/en-US](https://api-v2.ignite.microsoft.com/api/session/all/en-US) in your browser
@@ -63,7 +97,19 @@ ignite2025-sessions-html/
 │       └── files/
 │           ├── file.json          # Sample session data
 │           └── style.png          # Reference image
-├── index.html                     # Main application file
+├── build/                         # Build output (generated)
+│   └── index.html                 # Built HTML with embedded sessions data
+├── scripts/
+│   ├── build.sh                   # Build project (embed sessions.json into HTML)
+│   ├── deploy.sh                  # Build and deploy to nginx
+│   ├── start.sh                   # Start nginx server
+│   ├── stop.sh                    # Stop nginx server
+│   ├── restart.sh                 # Restart/reload nginx server
+│   ├── status.sh                  # Check server status and logs
+│   └── serve.sh                   # Simple HTTP server (alternative)
+├── nginx.conf                     # nginx server configuration
+├── index.html                     # Source HTML file
+├── sessions.json                  # Session data (download from API)
 └── README.md                      # This file
 ```
 
@@ -85,9 +131,74 @@ The dev container includes:
 - Data preview extensions
 - Git visualization tools
 
+### Build Process
+
+The project uses a build system to embed session data directly into the HTML:
+
+**Build workflow:**
+```bash
+# 1. Download session data
+curl -o sessions.json "https://api-v2.ignite.microsoft.com/api/session/all/en-US"
+
+# 2. Build the project (embeds sessions.json into index.html)
+./scripts/build.sh
+
+# Output: build/index.html (with embedded data, ~5MB)
+```
+
+**Or use the deploy script (build + restart nginx):**
+```bash
+./scripts/deploy.sh
+```
+
+### Data Loading Priority
+
+The viewer implements a 3-tier fallback system:
+
+1. **User-provided file** (drag & drop or file picker) - Highest priority
+2. **sessions.json** in the same directory - Fallback #1
+3. **Embedded data** in the built HTML - Fallback #2
+
+This ensures the viewer always works, even without network access or external files.
+
 ### Local Development
 
-No build process required! Simply edit `index.html` and refresh your browser.
+**Development mode (source files):**
+```bash
+# Edit index.html and serve directly
+./scripts/serve.sh
+
+# Or point nginx to source directory
+# (Edit nginx.conf: root /workspaces/ignite2025-sessions-html)
+```
+
+**Production mode (built files):**
+```bash
+# Edit index.html, rebuild, and deploy
+./scripts/build.sh
+./scripts/restart.sh
+
+# Or use the combined command
+./scripts/deploy.sh
+```
+
+**Server management:**
+```bash
+./scripts/start.sh      # Start nginx
+./scripts/stop.sh       # Stop nginx
+./scripts/restart.sh    # Reload configuration
+./scripts/status.sh     # View status and logs
+```
+
+### nginx Configuration
+
+The `nginx.conf` includes:
+- Gzip compression for better performance
+- Security headers (X-Frame-Options, X-Content-Type-Options, X-XSS-Protection)
+- Appropriate caching strategies for HTML and static assets
+- JSON content type handling
+- Custom error pages
+- Serves files from project directory directly
 
 ## Technology Stack
 

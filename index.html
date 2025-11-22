@@ -677,6 +677,72 @@
     }
 
     // Setup drag-and-drop and file input
+    // Global flag to track if user has loaded their own file
+    var userLoadedFile = false;
+
+    // Function to render sessions data
+    function renderSessions(json, source) {
+        if (!Array.isArray(json)) {
+            throw new Error('Expected JSON to be an array of sessions.');
+        }
+
+        var payload = constructVisualizerPayload(json);
+        var templateSource = document.getElementById('session-template').innerHTML;
+        var template = Handlebars.compile(templateSource);
+        var html = template(payload);
+
+        var vizEl = document.getElementById('visualization');
+        vizEl.innerHTML = html;
+
+        setStatus('Loaded ' + payload.totalSessions + ' sessions from ' + source, 'success');
+
+        // Scroll to the visualization
+        vizEl.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Function to load JSON from URL with fallback
+    function loadFromURL(url, fallbackToEmbedded) {
+        setStatus('Loading sessions from ' + url + '...', null);
+        
+        fetch(url)
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status + ': ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(function(json) {
+                renderSessions(json, url);
+            })
+            .catch(function(err) {
+                console.warn('Failed to load from ' + url + ':', err.message);
+                
+                if (fallbackToEmbedded && typeof EMBEDDED_SESSIONS_DATA !== 'undefined') {
+                    console.log('Falling back to embedded data');
+                    setStatus('Loading embedded sessions data...', null);
+                    try {
+                        renderSessions(EMBEDDED_SESSIONS_DATA, 'embedded data');
+                    } catch (renderErr) {
+                        console.error('Failed to render embedded data:', renderErr);
+                        setStatus('Failed to load sessions: ' + renderErr.message, 'error');
+                    }
+                } else {
+                    setStatus('No session data available. Please upload a sessions.json file.', 'error');
+                }
+            });
+    }
+
+    // Auto-load sessions on startup (priority: sessions.json > embedded data)
+    function autoLoadSessions() {
+        if (userLoadedFile) {
+            // User already loaded a file, don't auto-load
+            return;
+        }
+
+        // Try to load sessions.json, fallback to embedded data if it fails
+        loadFromURL('sessions.json', true);
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         var dropZone = document.getElementById('dropZone');
         var fileInput = document.getElementById('fileInput');
@@ -701,6 +767,7 @@
         dropZone.addEventListener('drop', function(e) {
             var files = e.dataTransfer.files;
             if (files && files.length > 0) {
+                userLoadedFile = true;
                 handleFile(files[0]);
             }
         });
@@ -714,9 +781,13 @@
         fileInput.addEventListener('change', function(e) {
             var file = e.target.files[0];
             if (file) {
+                userLoadedFile = true;
                 handleFile(file);
             }
         });
+
+        // Auto-load sessions with fallback logic
+        autoLoadSessions();
     });
 </script>
 </body>
