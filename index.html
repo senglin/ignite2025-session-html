@@ -484,19 +484,57 @@
     </div>
 
     <div class="tabs">
-        <button class="tab-button active" onclick="switchTab(event, 'ondemand')">
-            Sessions with On-Demand Videos ({{onDemandCount}})
+        <button class="tab-button active" onclick="switchTab(event, 'listings')">
+            Assets ({{listingsCount}})
+        </button>
+        <button class="tab-button" onclick="switchTab(event, 'ondemand')">
+            Watch ({{onDemandCount}})
         </button>
         <button class="tab-button" onclick="switchTab(event, 'slides')">
-            Sessions with Slide Decks ({{slideDeckCount}})
+            Slides ({{slideDeckCount}})
         </button>
-        <button class="tab-button" onclick="switchTab(event, 'listings')">
-            Listings ({{listingsCount}})
-        </button>
+
     </div>
 
-    <div id="ondemand" class="tab-content active">
-        <h2>Sessions with On-Demand Videos (Total: {{onDemandCount}})</h2>
+    <div id="listings" class="tab-content active">
+        <h2>Assets (combined sessions with videos OR slides) (Total: {{listingsCount}})</h2>
+        {{#if listingsSessions.length}}
+            <table class="listings-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Title</th>
+                        <th>Session Code</th>
+                        <th>Date & Time</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each listingsSessions}}
+                    <tr>
+                        <td class="index-cell">{{index}}</td>
+                        <td class="session-title-cell">{{title}}</td>
+                        <td class="session-code-cell">{{sessionCode}}</td>
+                        <td class="datetime-cell">{{dateTime}}</td>
+                        <td class="actions-cell">
+                            {{#if onDemand}}
+                            <a href="{{onDemand}}" target="_blank" class="btn btn-primary">▶️ Video</a>
+                            {{/if}}
+                            {{#if slideDeck}}
+                            <a href="{{slideDeck}}" target="_blank" class="btn btn-primary">📊 Slides</a>
+                            {{/if}}
+                        </td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+        {{else}}
+            <div class="no-sessions">No sessions with videos or slide decks found.</div>
+        {{/if}}
+    </div>
+
+    <div id="ondemand" class="tab-content">
+        <h2>Watch (on-demand video sessions) (Total: {{onDemandCount}})</h2>
         {{#if onDemandSessions.length}}
             {{#each onDemandSessions}}
             <div class="session-card">
@@ -540,7 +578,7 @@
     </div>
 
     <div id="slides" class="tab-content">
-        <h2>Sessions with Slide Decks (Total: {{slideDeckCount}})</h2>
+        <h2>Slides (presentation decks) (Total: {{slideDeckCount}})</h2>
         {{#if slideDeckSessions.length}}
             {{#each slideDeckSessions}}
             <div class="session-card">
@@ -580,42 +618,6 @@
         {{/if}}
     </div>
 
-    <div id="listings" class="tab-content">
-        <h2>Listings - All Sessions with Videos or Slide Decks (Total: {{listingsCount}})</h2>
-        {{#if listingsSessions.length}}
-            <table class="listings-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Title</th>
-                        <th>Session Code</th>
-                        <th>Date & Time</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {{#each listingsSessions}}
-                    <tr>
-                        <td class="index-cell">{{index}}</td>
-                        <td class="session-title-cell">{{title}}</td>
-                        <td class="session-code-cell">{{sessionCode}}</td>
-                        <td class="datetime-cell">{{dateTime}}</td>
-                        <td class="actions-cell">
-                            {{#if onDemand}}
-                            <a href="{{onDemand}}" target="_blank" class="btn btn-primary">▶️ Video</a>
-                            {{/if}}
-                            {{#if slideDeck}}
-                            <a href="{{slideDeck}}" target="_blank" class="btn btn-primary">📊 Slides</a>
-                            {{/if}}
-                        </td>
-                    </tr>
-                    {{/each}}
-                </tbody>
-            </table>
-        {{else}}
-            <div class="no-sessions">No sessions with videos or slide decks found.</div>
-        {{/if}}
-    </div>
     </script>
 
 <script>
@@ -679,7 +681,23 @@
 
             var dateTime = formatDateTime(session.startDateTime);
             var sessionCode = session.sessionCode || 'N/A';
-            var startDateTimeValue = session.startDateTime ? new Date(session.startDateTime).getTime() : 0;
+            
+            // Parse date and handle invalid dates (TBD, null, invalid formats)
+            var startDateTimeValue = 0;
+            var hasValidDate = false;
+            if (session.startDateTime) {
+                var parsedDate = new Date(session.startDateTime);
+                if (!isNaN(parsedDate.getTime())) {
+                    startDateTimeValue = parsedDate.getTime();
+                    hasValidDate = true;
+                } else {
+                    // Invalid date - assign a very high value to sort it to the end
+                    startDateTimeValue = Number.MAX_SAFE_INTEGER;
+                }
+            } else {
+                // No date (null/undefined) - assign maximum value to sort to end
+                startDateTimeValue = Number.MAX_SAFE_INTEGER;
+            }
 
             if (hasOnDemand) {
                 onDemandSessions.push({
@@ -718,6 +736,7 @@
                         sessionCode: sessionCode,
                         dateTime: dateTime,
                         startDateTimeValue: startDateTimeValue,
+                        hasValidDate: hasValidDate,
                         onDemand: hasOnDemand ? session.onDemand : null,
                         slideDeck: hasSlideDeck ? session.slideDeck : null
                     });
@@ -735,8 +754,22 @@
         });
 
         // Convert Map to array and sort by date/time
+        // Valid dates first (chronologically), then invalid dates/TBD at the end
         var listingsSessions = Array.from(listingsMap.values()).sort(function(a, b) {
-            return a.startDateTimeValue - b.startDateTimeValue;
+            // Both have valid dates - sort chronologically
+            if (a.hasValidDate && b.hasValidDate) {
+                return a.startDateTimeValue - b.startDateTimeValue;
+            }
+            // Only a has valid date - a comes first
+            if (a.hasValidDate && !b.hasValidDate) {
+                return -1;
+            }
+            // Only b has valid date - b comes first
+            if (!a.hasValidDate && b.hasValidDate) {
+                return 1;
+            }
+            // Neither has valid date - maintain original order (or sort by title)
+            return a.title.localeCompare(b.title);
         });
 
         // Add index to each listing session
