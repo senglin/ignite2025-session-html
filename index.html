@@ -358,6 +358,72 @@
             font-size: 16px;
         }
 
+        /* Table styles for Listings tab */
+        .listings-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .listings-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .listings-table th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .listings-table tbody tr {
+            border-bottom: 1px solid #e0e0e0;
+            transition: background-color 0.2s ease;
+        }
+        .listings-table tbody tr:hover {
+            background-color: #f7f9fc;
+        }
+        .listings-table tbody tr:last-child {
+            border-bottom: none;
+        }
+        .listings-table td {
+            padding: 15px;
+            font-size: 14px;
+            color: #2d3748;
+        }
+        .listings-table .session-title-cell {
+            font-weight: 600;
+            color: #2d3748;
+            max-width: 400px;
+        }
+        .listings-table .session-code-cell {
+            font-weight: 600;
+            color: #667eea;
+            white-space: nowrap;
+        }
+        .listings-table .datetime-cell {
+            white-space: nowrap;
+            color: #4a5568;
+        }
+        .listings-table .index-cell {
+            text-align: center;
+            font-weight: 600;
+            color: #667eea;
+            width: 60px;
+        }
+        .listings-table .actions-cell {
+            white-space: nowrap;
+        }
+        .listings-table .btn {
+            padding: 6px 12px;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+
         #visualization {
             margin-top: 10px;
         }
@@ -423,6 +489,9 @@
         </button>
         <button class="tab-button" onclick="switchTab(event, 'slides')">
             Sessions with Slide Decks ({{slideDeckCount}})
+        </button>
+        <button class="tab-button" onclick="switchTab(event, 'listings')">
+            Listings ({{listingsCount}})
         </button>
     </div>
 
@@ -510,6 +579,43 @@
             <div class="no-sessions">No sessions with slide decks found.</div>
         {{/if}}
     </div>
+
+    <div id="listings" class="tab-content">
+        <h2>Listings - All Sessions with Videos or Slide Decks (Total: {{listingsCount}})</h2>
+        {{#if listingsSessions.length}}
+            <table class="listings-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Title</th>
+                        <th>Session Code</th>
+                        <th>Date & Time</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each listingsSessions}}
+                    <tr>
+                        <td class="index-cell">{{index}}</td>
+                        <td class="session-title-cell">{{title}}</td>
+                        <td class="session-code-cell">{{sessionCode}}</td>
+                        <td class="datetime-cell">{{dateTime}}</td>
+                        <td class="actions-cell">
+                            {{#if onDemand}}
+                            <a href="{{onDemand}}" target="_blank" class="btn btn-primary">▶️ Video</a>
+                            {{/if}}
+                            {{#if slideDeck}}
+                            <a href="{{slideDeck}}" target="_blank" class="btn btn-primary">📊 Slides</a>
+                            {{/if}}
+                        </td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+        {{else}}
+            <div class="no-sessions">No sessions with videos or slide decks found.</div>
+        {{/if}}
+    </div>
     </script>
 
 <script>
@@ -565,18 +671,21 @@
     function constructVisualizerPayload(response) {
         var onDemandSessions = [];
         var slideDeckSessions = [];
+        var listingsMap = new Map(); // Use Map to track unique sessions by sessionCode
 
         response.forEach(function(session) {
             var hasOnDemand = isValidUrl(session.onDemand);
             var hasSlideDeck = isValidUrl(session.slideDeck);
 
             var dateTime = formatDateTime(session.startDateTime);
+            var sessionCode = session.sessionCode || 'N/A';
+            var startDateTimeValue = session.startDateTime ? new Date(session.startDateTime).getTime() : 0;
 
             if (hasOnDemand) {
                 onDemandSessions.push({
                     index: onDemandSessions.length + 1,
                     title: session.title || 'Untitled Session',
-                    sessionCode: session.sessionCode || 'N/A',
+                    sessionCode: sessionCode,
                     description: session.description || '',
                     aiDescription: session.aiDescription || '',
                     speakerNames: session.speakerNames || '',
@@ -591,7 +700,7 @@
                 slideDeckSessions.push({
                     index: slideDeckSessions.length + 1,
                     title: session.title || 'Untitled Session',
-                    sessionCode: session.sessionCode || 'N/A',
+                    sessionCode: sessionCode,
                     description: session.description || '',
                     aiDescription: session.aiDescription || '',
                     speakerNames: session.speakerNames || '',
@@ -600,14 +709,50 @@
                     slideDeck: session.slideDeck
                 });
             }
+
+            // Add to listings if it has either video or slides
+            if (hasOnDemand || hasSlideDeck) {
+                if (!listingsMap.has(sessionCode)) {
+                    listingsMap.set(sessionCode, {
+                        title: session.title || 'Untitled Session',
+                        sessionCode: sessionCode,
+                        dateTime: dateTime,
+                        startDateTimeValue: startDateTimeValue,
+                        onDemand: hasOnDemand ? session.onDemand : null,
+                        slideDeck: hasSlideDeck ? session.slideDeck : null
+                    });
+                } else {
+                    // Update existing entry if we have additional links
+                    var existing = listingsMap.get(sessionCode);
+                    if (hasOnDemand && !existing.onDemand) {
+                        existing.onDemand = session.onDemand;
+                    }
+                    if (hasSlideDeck && !existing.slideDeck) {
+                        existing.slideDeck = session.slideDeck;
+                    }
+                }
+            }
+        });
+
+        // Convert Map to array and sort by date/time
+        var listingsSessions = Array.from(listingsMap.values()).sort(function(a, b) {
+            return a.startDateTimeValue - b.startDateTimeValue;
+        });
+
+        // Add index to each listing session
+        listingsSessions = listingsSessions.map(function(session, idx) {
+            session.index = idx + 1;
+            return session;
         });
 
         return {
             totalSessions: response.length,
             onDemandCount: onDemandSessions.length,
             slideDeckCount: slideDeckSessions.length,
+            listingsCount: listingsSessions.length,
             onDemandSessions: onDemandSessions,
-            slideDeckSessions: slideDeckSessions
+            slideDeckSessions: slideDeckSessions,
+            listingsSessions: listingsSessions
         };
     }
 
